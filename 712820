@@ -1,0 +1,544 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#2f5bea">
+<title>English hors-ligne</title>
+<style>
+:root{--bg:#f6f7fb;--card:#fff;--tx:#1d2233;--mut:#667;--ac:#2f5bea;--ac2:#e8edff;--ok:#1a9a52;--ko:#d23a3a;--bd:#dde1ee}
+@media(prefers-color-scheme:dark){:root{--bg:#10131c;--card:#1a1f2d;--tx:#e8ebf5;--mut:#9aa3bd;--ac:#7d9bff;--ac2:#252c45;--ok:#4cd68a;--ko:#ff7a7a;--bd:#2c3350}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+header{padding:14px 16px 6px}
+h1{margin:0;font-size:20px}
+header small{color:var(--mut)}
+nav{display:flex;gap:6px;overflow-x:auto;padding:8px 12px;position:sticky;top:0;background:var(--bg);z-index:5;scrollbar-width:none}
+nav::-webkit-scrollbar{display:none}
+nav button{flex:none;border:1px solid var(--bd);background:var(--card);color:var(--tx);padding:8px 14px;border-radius:20px;font-size:14px}
+nav button.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+main{padding:8px 12px 80px;max-width:760px;margin:auto}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:14px;margin:10px 0}
+h2{font-size:18px;margin:6px 0 8px}h3{font-size:16px;margin:10px 0 4px}
+details{background:var(--card);border:1px solid var(--bd);border-radius:14px;margin:8px 0;padding:0 14px}
+summary{padding:12px 0;font-weight:600;cursor:pointer}
+details[open] summary{border-bottom:1px solid var(--bd);margin-bottom:8px}
+.f{background:var(--ac2);padding:8px 10px;border-radius:10px;font-family:ui-monospace,Menlo,monospace;font-size:14px;margin:6px 0}
+.mut{color:var(--mut);font-size:14px}
+.ex{display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-top:1px dashed var(--bd)}
+.ex div{flex:1}.ex i{color:var(--mut);font-size:14px;display:block}
+.say{flex:none;border:0;background:var(--ac2);border-radius:50%;width:36px;height:36px;font-size:16px}
+input,select,textarea{width:100%;padding:11px;border:1px solid var(--bd);border-radius:10px;background:var(--card);color:var(--tx);font-size:16px}
+textarea{min-height:90px}
+.row{display:flex;gap:8px;margin:8px 0}.row>*{flex:1}
+.btn{border:0;background:var(--ac);color:#fff;padding:11px 14px;border-radius:10px;font-size:15px}
+.btn.alt{background:var(--ac2);color:var(--tx)}
+table{width:100%;border-collapse:collapse;font-size:15px}
+td,th{padding:7px 6px;border-bottom:1px solid var(--bd);text-align:left}
+th{color:var(--mut);font-weight:600;font-size:13px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.chip{border:1px solid var(--bd);background:var(--card);color:var(--tx);padding:6px 11px;border-radius:16px;font-size:14px}
+.chip.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+.w{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--bd)}
+.w .t{flex:1}.w b{display:block}
+.hide{filter:blur(6px);cursor:pointer}
+.opt{display:block;width:100%;text-align:left;margin:6px 0;padding:12px;border-radius:10px;border:1px solid var(--bd);background:var(--card);color:var(--tx);font-size:16px}
+.opt.ok{background:var(--ok);color:#fff;border-color:var(--ok)}.opt.ko{background:var(--ko);color:#fff;border-color:var(--ko)}
+.ok-t{color:var(--ok)}.ko-t{color:var(--ko)}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#222;color:#fff;padding:10px 16px;border-radius:20px;font-size:14px;display:none;z-index:9;max-width:90%}
+.big{font-size:22px;font-weight:700}
+</style>
+</head>
+<body>
+<header><h1>English 🇬🇧 hors-ligne</h1><small>Temps · Règles · Conjugaison · Vocabulaire · Traduction · Prononciation</small></header>
+<nav id="nav"></nav>
+<main id="main"></main>
+<div id="toast"></div>
+
+<script>
+/* ============ Utilitaires ============ */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+const store={get(k,d){try{const v=JSON.parse(localStorage.getItem("eng_"+k));return v==null?d:v}catch(e){return d}},set(k,v){try{localStorage.setItem("eng_"+k,JSON.stringify(v))}catch(e){}}};
+const cap=x=>x.charAt(0).toUpperCase()+x.slice(1);
+function toast(m){const t=$("#toast");t.textContent=m;t.style.display="block";clearTimeout(toast.h);toast.h=setTimeout(()=>t.style.display="none",2600)}
+function speak(t){
+  if(!("speechSynthesis" in window)){toast("Synthèse vocale non disponible sur ce navigateur");return}
+  speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(t);u.lang="en-US";
+  const vs=speechSynthesis.getVoices().filter(v=>v.lang&&v.lang.toLowerCase().startsWith("en"));
+  const v=vs.find(x=>x.name===store.get("voice",""))||vs[0];
+  if(v){u.voice=v;u.lang=v.lang}else toast("Aucune voix anglaise trouvée : installe-la dans Paramètres > Synthèse vocale");
+  u.rate=store.get("rate",0.9);
+  speechSynthesis.speak(u);
+}
+document.addEventListener("click",e=>{const b=e.target.closest("[data-say]");if(b)speak(b.dataset.say)});
+const sayBtn=t=>`<button class="say" data-say="${esc(t)}" aria-label="Écouter">🔊</button>`;
+
+/* ============ Données : les 12 temps ============ */
+const TENSES=[
+{n:"Present Simple",fr:"Présent simple",f:"S + verbe (+s/es à he, she, it)",u:["Habitudes et routines","Vérités générales","Horaires, programmes"],sig:"always, usually, often, sometimes, never, every day",ex:[["She works every day.","Elle travaille tous les jours."],["Water boils at 100°C.","L'eau bout à 100 °C."],["Does he like tea?","Est-ce qu'il aime le thé ?"]]},
+{n:"Present Continuous",fr:"Présent continu",f:"S + am/is/are + verbe-ing",u:["Action en cours en ce moment","Projet proche et organisé","Situation temporaire"],sig:"now, at the moment, currently, today, these days",ex:[["I am studying English now.","J'étudie l'anglais en ce moment."],["They are not playing.","Ils ne jouent pas."],["We are meeting him tomorrow.","Nous le rencontrons demain."]]},
+{n:"Past Simple",fr:"Prétérit simple",f:"S + verbe-ed (ou forme irrégulière)",u:["Action terminée dans le passé","Série d'actions passées"],sig:"yesterday, last week, ago, in 2020, when",ex:[["I visited Lomé last year.","J'ai visité Lomé l'année dernière."],["She went home and ate.","Elle est rentrée et a mangé."],["Did you see him?","Tu l'as vu ?"]]},
+{n:"Past Continuous",fr:"Prétérit continu",f:"S + was/were + verbe-ing",u:["Action en cours à un moment passé","Action longue interrompue par une autre"],sig:"while, when, at 8 o'clock yesterday",ex:[["I was reading when he called.","Je lisais quand il a appelé."],["They were sleeping at midnight.","Ils dormaient à minuit."]]},
+{n:"Present Perfect",fr:"Présent parfait",f:"S + have/has + participe passé",u:["Expérience de vie","Action passée avec lien avec le présent","Résultat visible maintenant"],sig:"ever, never, already, yet, just, since, for, so far",ex:[["I have never been to London.","Je ne suis jamais allé à Londres."],["She has just left.","Elle vient de partir."],["We have lived here for 5 years.","Nous vivons ici depuis 5 ans."]]},
+{n:"Present Perfect Continuous",fr:"Présent parfait continu",f:"S + have/has + been + verbe-ing",u:["Action commencée dans le passé et toujours en cours","Insister sur la durée"],sig:"for, since, all day, lately, recently",ex:[["I have been studying for two hours.","J'étudie depuis deux heures."],["It has been raining since morning.","Il pleut depuis ce matin."]]},
+{n:"Past Perfect",fr:"Plus-que-parfait",f:"S + had + participe passé",u:["Action antérieure à une autre action passée"],sig:"before, after, by the time, already",ex:[["When I arrived, the film had started.","Quand je suis arrivé, le film avait commencé."],["She had already eaten.","Elle avait déjà mangé."]]},
+{n:"Past Perfect Continuous",fr:"Plus-que-parfait continu",f:"S + had been + verbe-ing",u:["Durée d'une action avant un moment passé"],sig:"for, since, before",ex:[["He had been working for hours when I called.","Il travaillait depuis des heures quand j'ai appelé."]]},
+{n:"Future Simple (will)",fr:"Futur simple",f:"S + will + base",u:["Décision spontanée","Prédiction","Promesse, offre"],sig:"tomorrow, next week, soon, I think, probably",ex:[["I will help you.","Je vais t'aider."],["It will rain tomorrow.","Il pleuvra demain."],["Will you come?","Tu viendras ?"]]},
+{n:"Be going to",fr:"Futur proche",f:"S + am/is/are + going to + base",u:["Intention déjà décidée","Prédiction basée sur un indice"],sig:"tonight, next month, look at those clouds",ex:[["I am going to study tonight.","Je vais étudier ce soir."],["Look! It is going to rain.","Regarde ! Il va pleuvoir."]]},
+{n:"Future Continuous",fr:"Futur continu",f:"S + will be + verbe-ing",u:["Action en cours à un moment futur précis"],sig:"this time tomorrow, at 5 pm tomorrow",ex:[["This time tomorrow I will be flying.","Demain à cette heure, je serai en train de voler."]]},
+{n:"Future Perfect",fr:"Futur antérieur",f:"S + will have + participe passé",u:["Action terminée avant un moment futur"],sig:"by + date, by the time",ex:[["I will have finished by Friday.","J'aurai fini d'ici vendredi."],["She will have graduated by 2030.","Elle aura obtenu son diplôme d'ici 2030."]]}
+];
+
+/* ============ Règles de grammaire ============ */
+const GRAMMAR=[
+{t:"A / An / The (articles)",b:`<p><b>a</b> + son consonne : <i>a book, a university</i> (son « you »).<br><b>an</b> + son voyelle : <i>an apple, an hour</i> (h muet).<br><b>the</b> = chose précise / déjà connue : <i>The book on the table.</i><br>Pas d'article pour le général : <i>I like music.</i></p>`},
+{t:"Pluriel des noms",b:`<p>+s : <i>book → books</i><br>+es (s, x, z, ch, sh) : <i>box → boxes</i><br>consonne+y → ies : <i>city → cities</i><br>f/fe → ves : <i>knife → knives</i><br>Irréguliers : <i>man → men, woman → women, child → children, foot → feet, tooth → teeth, person → people, mouse → mice</i><br>Invariables : <i>sheep, fish, series</i></p>`},
+{t:"Pronoms sujets, objets, possessifs",b:`<table><tr><th>Sujet</th><th>Objet</th><th>Adj. poss.</th><th>Pron. poss.</th></tr>
+<tr><td>I</td><td>me</td><td>my</td><td>mine</td></tr><tr><td>you</td><td>you</td><td>your</td><td>yours</td></tr><tr><td>he</td><td>him</td><td>his</td><td>his</td></tr><tr><td>she</td><td>her</td><td>her</td><td>hers</td></tr><tr><td>it</td><td>it</td><td>its</td><td>—</td></tr><tr><td>we</td><td>us</td><td>our</td><td>ours</td></tr><tr><td>they</td><td>them</td><td>their</td><td>theirs</td></tr></table>
+<p class="mut">Possession : <i>Peter's book</i> (nom + 's).</p>`},
+{t:"Comparatifs et superlatifs",b:`<p>Court : <i>tall → taller → the tallest</i><br>Long : <i>more / the most</i> + adj : <i>more interesting, the most interesting</i><br>Irréguliers : <i>good → better → the best ; bad → worse → the worst ; far → farther → the farthest</i><br>Égalité : <i>as tall as</i> · Infériorité : <i>less … than</i></p>`},
+{t:"Verbes modaux",b:`<p>Toujours + base, sans -s, sans « to ».<br><b>can</b> capacité/permission · <b>could</b> capacité passée / demande polie<br><b>may/might</b> possibilité · <b>must</b> obligation forte / déduction<br><b>have to</b> obligation externe · <b>should</b> conseil · <b>would</b> politesse, conditionnel<br><i>You should study. She can swim. May I come in?</i><br>Négation : <i>cannot / can't, mustn't</i> (interdiction), <i>don't have to</i> (pas obligé).</p>`},
+{t:"Conditionnels (0, 1, 2, 3)",b:`<div class="f">0 : If + présent, présent</div><p><i>If you heat ice, it melts.</i> (vérité générale)</p>
+<div class="f">1 : If + présent, will + base</div><p><i>If it rains, I will stay home.</i> (réel/probable)</p>
+<div class="f">2 : If + prétérit, would + base</div><p><i>If I had money, I would travel.</i> (irréel présent) — on dit <i>If I were you…</i></p>
+<div class="f">3 : If + past perfect, would have + pp</div><p><i>If I had studied, I would have passed.</i> (irréel passé)</p>`},
+{t:"La voix passive",b:`<div class="f">be (au temps voulu) + participe passé</div><p><i>The letter is written. / was written. / will be written. / has been written.</i><br>Actif : <i>Tom broke the window.</i> → Passif : <i>The window was broken (by Tom).</i></p>`},
+{t:"Discours rapporté",b:`<p>On « recule » le temps : <i>present → past, will → would, can → could, now → then, today → that day, tomorrow → the next day</i>.<br><i>"I am tired." → She said (that) she was tired.</i><br>Questions : ordre affirmatif, sans do : <i>He asked where I lived.</i></p>`},
+{t:"Prépositions : in / on / at",b:`<p><b>Temps</b> : <i>at</i> 5 pm, at night · <i>on</i> Monday, on May 5th · <i>in</i> June, in 2026, in the morning.<br><b>Lieu</b> : <i>at</i> school (point) · <i>on</i> the table (surface) · <i>in</i> Togo, in the room (intérieur).</p>`},
+{t:"Some / Any / Much / Many / A lot of",b:`<p><b>some</b> affirmatif : <i>I have some books.</i><br><b>any</b> négatif/question : <i>I don't have any. Do you have any?</i><br><b>many</b> + dénombrable : <i>many students</i> · <b>much</b> + indénombrable : <i>much water</i> (surtout négatif/question)<br><b>a lot of</b> = les deux, affirmatif. <b>few/a few</b> (dénombrable), <b>little/a little</b> (indénombrable).</p>`},
+{t:"Former une question",b:`<p><b>Être / modal / auxiliaire</b> : inversion → <i>Are you ready? Can she swim? Have they left?</i><br><b>Autres verbes</b> : do/does/did + sujet + base → <i>Do you like it? Did he come?</i><br><b>Mots interrogatifs</b> : what, where, when, why, who, how (much/many/long/old) + question → <i>Where do you live?</i><br>Sujet = mot interrogatif : pas de do → <i>Who called you?</i></p>`},
+{t:"There is / There are",b:`<p><i>There is a book. There are two books. Is there a bank? There isn't any milk.</i><br>Passé : <i>there was / there were</i> · Futur : <i>there will be</i>.</p>`},
+{t:"Used to / Be used to / Get used to",b:`<p><b>used to + base</b> = habitude passée révolue : <i>I used to play football.</i><br><b>be used to + -ing</b> = être habitué : <i>I am used to waking up early.</i><br><b>get used to + -ing</b> = s'habituer.</p>`},
+{t:"Gérondif (-ing) ou infinitif (to) ?",b:`<p><b>+ -ing</b> : enjoy, finish, avoid, mind, keep, suggest, give up, look forward to.<br><b>+ to</b> : want, need, hope, decide, plan, promise, learn, would like.<br><b>Les deux</b> : like, love, start, begin.<br>Changement de sens : <i>stop doing</i> (arrêter) / <i>stop to do</i> (s'arrêter pour).</p>`},
+{t:"Propositions relatives",b:`<p><b>who</b> (personne) · <b>which</b> (chose) · <b>that</b> (les deux) · <b>whose</b> (appartenance) · <b>where</b> (lieu).<br><i>The man who called is my uncle. The book that I read was great.</i></p>`},
+{t:"Orthographe : -ing, -ed, -s",b:`<p><b>-ing</b> : <i>make → making</i> (on retire e) · <i>run → running</i> (on double) · <i>lie → lying</i> · <i>play → playing</i>.<br><b>-ed</b> : <i>study → studied</i> · <i>stop → stopped</i> · <i>like → liked</i>.<br><b>he/she/it</b> : <i>go → goes, study → studies, have → has</i>.</p>`}
+];
+
+/* ============ Verbes irréguliers (base → [prétérit, participe passé]) ============ */
+const IRR={be:["was/were","been"],have:["had","had"],do:["did","done"],go:["went","gone"],see:["saw","seen"],take:["took","taken"],make:["made","made"],come:["came","come"],get:["got","gotten"],give:["gave","given"],know:["knew","known"],think:["thought","thought"],say:["said","said"],tell:["told","told"],find:["found","found"],eat:["ate","eaten"],drink:["drank","drunk"],write:["wrote","written"],read:["read","read"],speak:["spoke","spoken"],buy:["bought","bought"],bring:["brought","brought"],begin:["began","begun"],break:["broke","broken"],build:["built","built"],choose:["chose","chosen"],feel:["felt","felt"],forget:["forgot","forgotten"],hear:["heard","heard"],keep:["kept","kept"],leave:["left","left"],lose:["lost","lost"],meet:["met","met"],pay:["paid","paid"],put:["put","put"],run:["ran","run"],sell:["sold","sold"],send:["sent","sent"],sit:["sat","sat"],sleep:["slept","slept"],stand:["stood","stood"],swim:["swam","swum"],teach:["taught","taught"],understand:["understood","understood"],win:["won","won"],wear:["wore","worn"],sing:["sang","sung"],fall:["fell","fallen"],draw:["drew","drawn"],drive:["drove","driven"],fly:["flew","flown"],grow:["grew","grown"],hold:["held","held"],let:["let","let"],cut:["cut","cut"],hit:["hit","hit"],cost:["cost","cost"],mean:["meant","meant"],lend:["lent","lent"],ride:["rode","ridden"],rise:["rose","risen"],shut:["shut","shut"],throw:["threw","thrown"],wake:["woke","woken"],spend:["spent","spent"],catch:["caught","caught"],fight:["fought","fought"],hide:["hid","hidden"],show:["showed","shown"],steal:["stole","stolen"],lead:["led","led"],set:["set","set"],pick:["picked","picked"]};
+const IRR_FR={be:"être",have:"avoir",do:"faire",go:"aller",see:"voir",take:"prendre",make:"fabriquer/faire",come:"venir",get:"obtenir",give:"donner",know:"savoir",think:"penser",say:"dire",tell:"raconter",find:"trouver",eat:"manger",drink:"boire",write:"écrire",read:"lire",speak:"parler",buy:"acheter",bring:"apporter",begin:"commencer",break:"casser",build:"construire",choose:"choisir",feel:"ressentir",forget:"oublier",hear:"entendre",keep:"garder",leave:"partir",lose:"perdre",meet:"rencontrer",pay:"payer",put:"mettre",run:"courir",sell:"vendre",send:"envoyer",sit:"s'asseoir",sleep:"dormir",stand:"se tenir debout",swim:"nager",teach:"enseigner",understand:"comprendre",win:"gagner",wear:"porter",sing:"chanter",fall:"tomber",draw:"dessiner",drive:"conduire",fly:"voler",grow:"grandir",hold:"tenir",let:"laisser",cut:"couper",hit:"frapper",cost:"coûter",mean:"signifier",lend:"prêter",ride:"monter",rise:"se lever",shut:"fermer",throw:"jeter",wake:"se réveiller",spend:"dépenser",catch:"attraper",fight:"se battre",hide:"cacher",show:"montrer",steal:"voler (dérober)",lead:"diriger",set:"poser",pick:"cueillir/choisir"};
+const REG=["work","play","study","learn","walk","talk","love","like","want","need","help","watch","visit","wait","open","close","live","start","use","try","stop","plan","listen","call","cook","clean","travel","download","answer","ask"];
+
+/* ============ Moteur de conjugaison ============ */
+const vow=/[aeiou]/;
+function groups(w){return (w.match(/[aeiouy]+/g)||[]).length}
+function doubles(v){return /[^aeiou][aeiou][^aeiouwxy]$/.test(v)&&(groups(v)===1||["begin","forget","prefer","admit","occur","refer","permit","regret","control","commit","upset"].includes(v))}
+function ingForm(v){
+  if(v==="be")return "being";
+  if(v.endsWith("ie"))return v.slice(0,-2)+"ying";
+  if(v.endsWith("ee")||v.endsWith("ye")||v.endsWith("oe"))return v+"ing";
+  if(v.endsWith("e"))return v.slice(0,-1)+"ing";
+  if(doubles(v))return v+v.slice(-1)+"ing";
+  return v+"ing";
+}
+function edForm(v){
+  if(v.endsWith("e"))return v+"d";
+  if(/[^aeiou]y$/.test(v))return v.slice(0,-1)+"ied";
+  if(doubles(v))return v+v.slice(-1)+"ed";
+  return v+"ed";
+}
+function thirdForm(v){
+  if(v==="have")return "has";if(v==="be")return "is";
+  if(/(s|x|z|ch|sh|o)$/.test(v))return v+"es";
+  if(/[^aeiou]y$/.test(v))return v.slice(0,-1)+"ies";
+  return v+"s";
+}
+function info(v){
+  v=v.trim().toLowerCase();
+  const irr=IRR[v];
+  return {v,irr:!!irr,past:irr?irr[0]:edForm(v),pp:irr?irr[1]:edForm(v),ing:ingForm(v),third:thirdForm(v)};
+}
+const NEG={am:"am not",is:"isn't",are:"aren't",was:"wasn't",were:"weren't",have:"haven't",has:"hasn't",had:"hadn't",will:"won't",would:"wouldn't",do:"don't",does:"doesn't",did:"didn't"};
+const SUBJ=["I","you","he","she","it","we","they"];
+function build(v,s,mode){
+  const I=info(v),th=["he","she","it"].includes(s);
+  const beP=s==="I"?"am":(th?"is":"are"),beW=(s==="I"||th)?"was":"were",hv=th?"has":"have",isBe=I.v==="be";
+  const mk=(aux,main)=>{main=main?" "+main:"";
+    if(mode==="aff")return `${cap(s)} ${aux}${main}`;
+    if(mode==="neg")return `${cap(s)} ${NEG[aux]}${main}`;
+    return `${cap(aux)} ${s}${main}?`};
+  const ds=th?"does":"do";
+  const ps=isBe?mk(beP,""):(mode==="aff"?`${cap(s)} ${th?I.third:I.v}`:mk(ds,I.v));
+  const pa=isBe?mk(beW,""):(mode==="aff"?`${cap(s)} ${I.past}`:mk("did",I.v));
+  return [
+    ps, mk(beP,I.ing), pa, mk(beW,I.ing), mk(hv,I.pp), mk(hv,"been "+I.ing),
+    mk("had",I.pp), mk("had","been "+I.ing), mk("will",I.v), mk(beP,"going to "+I.v),
+    mk("will","be "+I.ing), mk("will","have "+I.pp)
+  ];
+}
+
+/* ============ Vocabulaire ============ */
+const VOC={
+"Bases":[["hello","bonjour"],["goodbye","au revoir"],["please","s'il vous plaît"],["thank you","merci"],["sorry","désolé"],["yes","oui"],["no","non"],["today","aujourd'hui"],["tomorrow","demain"],["yesterday","hier"],["now","maintenant"],["always","toujours"]],
+"Famille":[["mother","mère"],["father","père"],["brother","frère"],["sister","sœur"],["son","fils"],["daughter","fille"],["grandmother","grand-mère"],["grandfather","grand-père"],["uncle","oncle"],["aunt","tante"],["cousin","cousin"],["friend","ami"]],
+"École":[["teacher","professeur"],["student","étudiant"],["lesson","leçon"],["homework","devoirs"],["exam","examen"],["book","livre"],["notebook","cahier"],["pen","stylo"],["desk","bureau"],["library","bibliothèque"],["to learn","apprendre"],["to study","étudier"]],
+"Nourriture":[["bread","pain"],["water","eau"],["rice","riz"],["chicken","poulet"],["fish","poisson"],["fruit","fruit"],["vegetable","légume"],["egg","œuf"],["milk","lait"],["breakfast","petit-déjeuner"],["lunch","déjeuner"],["dinner","dîner"]],
+"Maison":[["house","maison"],["room","chambre / pièce"],["kitchen","cuisine"],["door","porte"],["window","fenêtre"],["table","table"],["chair","chaise"],["bed","lit"],["bathroom","salle de bain"],["garden","jardin"],["roof","toit"],["key","clé"]],
+"Corps":[["head","tête"],["eye","œil"],["ear","oreille"],["nose","nez"],["mouth","bouche"],["hand","main"],["arm","bras"],["leg","jambe"],["foot","pied"],["heart","cœur"],["back","dos"],["finger","doigt"]],
+"Informatique":[["computer","ordinateur"],["data","données"],["file","fichier"],["screen","écran"],["keyboard","clavier"],["software","logiciel"],["network","réseau"],["password","mot de passe"],["to download","télécharger"],["database","base de données"],["algorithm","algorithme"],["to search","chercher"]],
+"Travail":[["job","emploi"],["salary","salaire"],["boss","patron"],["meeting","réunion"],["skill","compétence"],["experience","expérience"],["schedule","emploi du temps"],["deadline","date limite"],["to apply","postuler"],["company","entreprise"],["interview","entretien"],["to hire","embaucher"]],
+"Verbes courants":[["to want","vouloir"],["to need","avoir besoin de"],["to like","aimer"],["to speak","parler"],["to understand","comprendre"],["to give","donner"],["to take","prendre"],["to come","venir"],["to go","aller"],["to see","voir"],["to eat","manger"],["to drink","boire"]],
+"Adjectifs":[["big","grand"],["small","petit"],["good","bon"],["bad","mauvais"],["easy","facile"],["difficult","difficile"],["fast","rapide"],["slow","lent"],["happy","heureux"],["tired","fatigué"],["new","nouveau"],["old","vieux"]],
+"Voyage":[["airport","aéroport"],["ticket","billet"],["passport","passeport"],["street","rue"],["city","ville"],["country","pays"],["train","train"],["hotel","hôtel"],["map","carte"],["luggage","bagages"],["left","gauche"],["right","droite"]]
+};
+function allWords(){
+  const a=[];Object.values(VOC).forEach(l=>l.forEach(w=>a.push(w)));
+  Object.keys(IRR_FR).forEach(k=>a.push(["to "+k,IRR_FR[k]]));
+  store.get("mine",[]).forEach(w=>a.push(w));
+  const seen=new Set();
+  return a.filter(w=>{const k=w[0].toLowerCase()+"|"+w[1].toLowerCase();if(seen.has(k))return false;seen.add(k);return true});
+}
+const PHRASES={
+"Se présenter":[["My name is …","Je m'appelle …"],["Nice to meet you.","Enchanté."],["I am a student.","Je suis étudiant."],["I study data science.","J'étudie la science des données."],["I speak French and Ewe.","Je parle français et éwé."],["I am learning English.","J'apprends l'anglais."]],
+"En classe":[["Can you repeat, please?","Pouvez-vous répéter, s'il vous plaît ?"],["I don't understand.","Je ne comprends pas."],["How do you say this in English?","Comment dit-on ça en anglais ?"],["What does this word mean?","Que signifie ce mot ?"],["Could you speak more slowly?","Pouvez-vous parler plus lentement ?"],["May I ask a question?","Puis-je poser une question ?"]],
+"Au quotidien":[["How are you?","Comment allez-vous ?"],["I'm fine, thank you.","Je vais bien, merci."],["Where is the bathroom?","Où sont les toilettes ?"],["How much is it?","Combien ça coûte ?"],["What time is it?","Quelle heure est-il ?"],["I would like some water.","Je voudrais de l'eau."],["Can you help me?","Pouvez-vous m'aider ?"],["See you tomorrow.","À demain."]],
+"Travail":[["I am looking for a job.","Je cherche un emploi."],["I have experience in …","J'ai de l'expérience en …"],["I can work remotely.","Je peux travailler à distance."],["Thank you for your time.","Merci pour votre temps."]]
+};
+const DIALOGS=[
+{t:"Se rencontrer",l:["Hi! My name is Kofi. What's your name?","Hello Kofi, I'm Ama. Nice to meet you.","Nice to meet you too. Are you a student?","Yes, I study computer science. And you?","I study data science. I'm in my first year."]},
+{t:"Au restaurant",l:["Good evening. What would you like?","I would like rice and chicken, please.","Anything to drink?","Just water, thank you.","Here you are. Enjoy your meal!"]}
+];
+const TIPS=[
+["th","« th » : langue entre les dents. think /θ/ (sans voix), this /ð/ (avec voix). Pas « s » ni « z ».",["think","this","three","mother"]],
+["h","Le « h » se souffle (house, have). Il est muet seulement dans hour, honest, heir.",["house","hour","happy","honest"]],
+["-ed","Terminaisons -ed : /t/ worked, /d/ played, /ɪd/ wanted, needed.",["worked","played","wanted","needed"]],
+["court/long","Voyelles courtes vs longues : ship/sheep, full/fool, live/leave.",["ship","sheep","live","leave"]],
+["muettes","Lettres muettes : knife, write, listen, Wednesday, comfortable.",["knife","write","listen","Wednesday"]],
+["accent","Accent tonique : photograph (PHO-to-graph), photographer (pho-TO-gra-pher).",["photograph","photographer","important","computer"]]
+];
+
+/* ============ Questions « choisis le bon temps » ============ */
+const GQ=[
+["She ___ to school every day.",["go","goes","is going","went"],1,"Habitude + she → présent simple avec -es."],
+["Look! The baby ___.",["sleeps","slept","is sleeping","has slept"],2,"« Look! » = action en cours → présent continu."],
+["I ___ him yesterday.",["see","saw","have seen","was seeing"],1,"« yesterday » → prétérit simple."],
+["I ___ never ___ to Paris.",["have / been","did / go","am / going","was / been"],0,"Expérience de vie → present perfect."],
+["They ___ TV when I arrived.",["watched","were watching","are watching","have watched"],1,"Action en cours interrompue → past continuous."],
+["If it rains, I ___ at home.",["stay","stayed","will stay","would stay"],2,"Condition 1 : If + présent, will + base."],
+["If I ___ rich, I would travel.",["am","was","were","will be"],2,"Condition 2 : If I were…"],
+["We ___ here since 2020.",["live","lived","have lived","are living"],2,"since + date → present perfect."],
+["When I arrived, the film ___.",["started","has started","had started","was start"],2,"Antérieur à une action passée → past perfect."],
+["I think it ___ tomorrow.",["rains","will rain","rained","is rain"],1,"Prédiction → will."],
+["The window ___ by Tom yesterday.",["broke","was broken","is broken","has broke"],1,"Passif au passé : was + participe."],
+["You ___ smoke here. It's forbidden.",["mustn't","don't have to","needn't","may"],0,"mustn't = interdiction."],
+["This book is ___ than that one.",["interesting","more interesting","most interesting","the more interesting"],1,"Adjectif long → more … than."],
+["There ___ two books on the table.",["is","are","be","has"],1,"Pluriel → there are."],
+["He asked me where I ___.",["live","lived","am living","will live"],1,"Discours rapporté → recul du temps."],
+["She is good ___ maths.",["in","at","on","for"],1,"good at."],
+["I enjoy ___ English.",["to learn","learn","learning","learned"],2,"enjoy + -ing."],
+["I ___ for two hours.",["study","am studying","have been studying","studied"],2,"Durée jusqu'à maintenant → present perfect continuous."]
+];
+
+/* ============ Interface ============ */
+const TABS=[["home","🏠 Accueil"],["revise","🧠 Réviser"],["temps","⏱ Temps"],["regles","📘 Règles"],["conj","🔁 Conjuguer"],["vocab","🔤 Vocabulaire"],["memo","📚 Mémo"],["trad","🌍 Traduire"],["parler","🗣 Parler"],["quiz","🎯 Quiz"]];
+const nav=$("#nav");
+TABS.forEach(([id,l])=>{const b=document.createElement("button");b.textContent=l;b.dataset.id=id;b.onclick=()=>show(id);nav.appendChild(b)});
+function show(id){
+  store.set("tab",id);
+  [...nav.children].forEach(b=>b.classList.toggle("on",b.dataset.id===id));
+  VIEWS[id]();window.scrollTo(0,0);
+}
+const M=$("#main");
+const VIEWS={};
+
+VIEWS.temps=()=>{
+  M.innerHTML=`<p class="mut">Touche un temps pour voir la formule, les usages et des exemples. 🔊 pour écouter.</p>`+
+  TENSES.map((t,i)=>`<details><summary>${i+1}. ${esc(t.n)} <span class="mut">— ${esc(t.fr)}</span></summary>
+  <div class="f">${esc(t.f)}</div>
+  <b>Utilisation</b><ul>${t.u.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>
+  <p class="mut"><b>Mots-clés :</b> ${esc(t.sig)}</p>
+  ${t.ex.map(e=>`<div class="ex"><div>${esc(e[0])}<i>${esc(e[1])}</i></div>${sayBtn(e[0])}</div>`).join("")}
+  <p></p></details>`).join("");
+};
+
+VIEWS.regles=()=>{
+  M.innerHTML=GRAMMAR.map(g=>`<details><summary>${esc(g.t)}</summary>${g.b}<p></p></details>`).join("");
+};
+
+VIEWS.conj=()=>{
+  M.innerHTML=`<div class="card">
+  <input id="cv" list="vl" placeholder="Écris un verbe (ex : go, study, write)" autocapitalize="none" value="${esc(store.get("cv","go"))}">
+  <datalist id="vl">${[...Object.keys(IRR),...REG].sort().map(v=>`<option value="${v}">`).join("")}</datalist>
+  <div class="row"><select id="cs">${SUBJ.map(s=>`<option ${s===store.get("cs","she")?"selected":""}>${s}</option>`).join("")}</select>
+  <select id="cm"><option value="aff">Affirmatif</option><option value="neg">Négatif</option><option value="q">Question</option></select></div>
+  <div id="cr"></div></div>
+  <details><summary>Verbes irréguliers (${Object.keys(IRR).length})</summary>
+  <input id="iq" placeholder="Filtrer…" style="margin-bottom:8px"><div style="overflow-x:auto"><table id="it"></table></div></details>
+  <p class="mut">Le moteur connaît ${Object.keys(IRR).length} verbes irréguliers. Les autres sont conjugués avec les règles des verbes réguliers (-ed, -ing, -s).</p>`;
+  const render=()=>{
+    const v=$("#cv").value.trim().toLowerCase(),s=$("#cs").value,m=$("#cm").value;
+    store.set("cv",v);store.set("cs",s);
+    if(!v){$("#cr").innerHTML="";return}
+    const I=info(v),r=build(v,s,m);
+    $("#cr").innerHTML=`<p class="mut">${esc(v)} → prétérit <b>${esc(I.past)}</b> · participe passé <b>${esc(I.pp)}</b> · -ing <b>${esc(I.ing)}</b>${I.irr?"":" (verbe régulier supposé)"}</p>
+    <table>${TENSES.map((t,i)=>`<tr><td class="mut" style="width:42%">${esc(t.fr)}</td><td>${esc(r[i])}</td><td style="width:44px">${sayBtn(r[i])}</td></tr>`).join("")}</table>`;
+  };
+  ["cv","cs","cm"].forEach(i=>$("#"+i).addEventListener("input",render));render();
+  const fillI=()=>{const q=$("#iq").value.toLowerCase();
+    $("#it").innerHTML=`<tr><th>Base</th><th>Prétérit</th><th>Part. passé</th><th>FR</th></tr>`+
+    Object.keys(IRR).filter(k=>k.includes(q)||(IRR_FR[k]||"").includes(q)).map(k=>`<tr><td>${k}</td><td>${IRR[k][0]}</td><td>${IRR[k][1]}</td><td class="mut">${esc(IRR_FR[k]||"")}</td></tr>`).join("")};
+  $("#iq").addEventListener("input",fillI);fillI();
+};
+
+VIEWS.vocab=()=>{
+  const cats=Object.keys(VOC);let cur=store.get("vc",cats[0]),hid=store.get("vh",false);
+  const render=()=>{
+    const list=cur==="Mes mots"?store.get("mine",[]):VOC[cur];
+    M.innerHTML=`<div class="chips">${[...cats,"Mes mots"].map(c=>`<button class="chip ${c===cur?"on":""}" data-c="${esc(c)}">${esc(c)}</button>`).join("")}</div>
+    <label class="mut"><input type="checkbox" id="vh" ${hid?"checked":""} style="width:auto"> Cacher le français (touche pour révéler)</label>
+    <div class="card">${list.length?list.map(w=>`<div class="w">${sayBtn(w[0])}<div class="t"><b>${esc(w[0])}</b><span class="${hid?"hide":""} fr">${esc(w[1])}</span></div></div>`).join(""):`<p class="mut">Aucun mot. Ajoute-en dans l'onglet Traduire.</p>`}</div>`;
+    M.querySelectorAll(".chip").forEach(b=>b.onclick=()=>{cur=b.dataset.c;store.set("vc",cur);render()});
+    $("#vh").onchange=e=>{hid=e.target.checked;store.set("vh",hid);render()};
+    M.querySelectorAll(".fr.hide").forEach(s=>s.onclick=()=>s.classList.remove("hide"));
+  };
+  render();
+};
+
+VIEWS.trad=()=>{
+  M.innerHTML=`<div class="card"><h2>Dictionnaire FR ⇄ EN</h2>
+  <input id="tq" placeholder="Un mot en français ou en anglais…" autocapitalize="none">
+  <div id="tr"></div>
+  <p class="mut">Hors-ligne, l'appli traduit des mots et des expressions de sa base. Pour traduire n'importe quelle phrase, demande-moi dans Claude quand tu as du réseau.</p></div>
+  <div class="card"><h2>Ajouter mon mot</h2><div class="row"><input id="ae" placeholder="Anglais"><input id="af" placeholder="Français"></div><button class="btn" id="ab">Enregistrer</button></div>
+  <h2>Phrases utiles</h2>`+
+  Object.entries(PHRASES).map(([k,l])=>`<details><summary>${esc(k)}</summary>${l.map(e=>`<div class="ex"><div>${esc(e[0])}<i>${esc(e[1])}</i></div>${sayBtn(e[0])}</div>`).join("")}<p></p></details>`).join("");
+  const norm=s=>s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/^to /,"");
+  $("#tq").addEventListener("input",e=>{
+    const q=norm(e.target.value.trim());if(!q){$("#tr").innerHTML="";return}
+    const all=[...allWords(),...Object.values(PHRASES).flat(),...Object.values(MEMO).flat()];
+    const r=all.filter(w=>norm(w[0]).includes(q)||norm(w[1]).includes(q)).slice(0,25);
+    $("#tr").innerHTML=r.length?r.map(w=>`<div class="w">${sayBtn(w[0])}<div class="t"><b>${esc(w[0])}</b>${esc(w[1])}</div></div>`).join(""):`<p class="mut">Pas trouvé dans la base. Ajoute-le ci-dessous !</p>`;
+  });
+  $("#ab").onclick=()=>{const a=$("#ae").value.trim(),f=$("#af").value.trim();if(!a||!f){toast("Remplis les deux champs");return}
+    const m=store.get("mine",[]);m.push([a,f]);store.set("mine",m);$("#ae").value=$("#af").value="";toast("Mot enregistré ✔")};
+};
+
+VIEWS.parler=()=>{
+  const voices=()=>("speechSynthesis" in window)?speechSynthesis.getVoices().filter(v=>v.lang&&v.lang.toLowerCase().startsWith("en")):[];
+  M.innerHTML=`<div class="card"><h2>Écouter n'importe quel texte</h2>
+  <textarea id="pt" placeholder="Colle ou écris une phrase en anglais…">${esc(store.get("pt","I have been learning English for two months."))}</textarea>
+  <div class="row"><button class="btn" id="pb">🔊 Écouter</button><button class="btn alt" id="ps">⏹ Stop</button></div>
+  <label class="mut">Vitesse : <span id="rv"></span></label><input type="range" id="pr" min="0.5" max="1.3" step="0.1" value="${store.get("rate",0.9)}">
+  <select id="pv" style="margin-top:8px"></select>
+  <p class="mut">Si tu n'entends rien : Paramètres du téléphone → Gestion générale → Langue → Synthèse vocale → installe la voix anglaise (une seule fois, puis tout marche hors-ligne).</p></div>
+
+  <div class="card"><h2>🎙 Mon enregistrement</h2><p class="mut">Écoute la phrase, enregistre-toi, puis compare.</p>
+  <div class="row"><button class="btn" id="rb">⏺ Enregistrer</button><button class="btn alt" id="rs">⏹ Arrêter</button></div><audio id="ra" controls style="width:100%;display:none"></audio></div>
+
+  <div class="card"><h2>🎤 Test de prononciation</h2>
+  <input id="tg" value="${esc(store.get("tg","I would like some water, please."))}">
+  <button class="btn" id="sb" style="margin-top:8px">🎤 Dire la phrase</button><div id="sr" style="margin-top:8px"></div>
+  <p class="mut">La reconnaissance vocale dépend de ton navigateur (souvent besoin d'Internet). Sinon, utilise l'enregistrement ci-dessus.</p></div>
+
+  <h2>Conseils pour francophones</h2>`+
+  TIPS.map(t=>`<details><summary>${esc(t[0])}</summary><p>${esc(t[1])}</p><div class="chips">${t[2].map(w=>`<button class="chip" data-say="${esc(w)}">🔊 ${esc(w)}</button>`).join("")}</div></details>`).join("")+
+  `<h2>Dialogues</h2>`+DIALOGS.map(d=>`<details><summary>${esc(d.t)}</summary>${d.l.map(x=>`<div class="ex"><div>${esc(x)}</div>${sayBtn(x)}</div>`).join("")}<p></p></details>`).join("");
+
+  const fillV=()=>{const sel=$("#pv");sel.innerHTML=`<option value="">Voix par défaut</option>`+voices().map(v=>`<option value="${esc(v.name)}" ${v.name===store.get("voice","")?"selected":""}>${esc(v.name)} (${esc(v.lang)})</option>`).join("")};
+  fillV();if("speechSynthesis" in window)speechSynthesis.onvoiceschanged=fillV;
+  $("#pv").onchange=e=>store.set("voice",e.target.value);
+  const rv=()=>{$("#rv").textContent=$("#pr").value+"×"};rv();
+  $("#pr").oninput=e=>{store.set("rate",parseFloat(e.target.value));rv()};
+  $("#pb").onclick=()=>{store.set("pt",$("#pt").value);speak($("#pt").value)};
+  $("#ps").onclick=()=>{if("speechSynthesis" in window)speechSynthesis.cancel()};
+
+  let rec,chunks=[];
+  $("#rb").onclick=async()=>{
+    try{const st=await navigator.mediaDevices.getUserMedia({audio:true});rec=new MediaRecorder(st);chunks=[];
+      rec.ondataavailable=e=>chunks.push(e.data);
+      rec.onstop=()=>{st.getTracks().forEach(t=>t.stop());const a=$("#ra");a.src=URL.createObjectURL(new Blob(chunks));a.style.display="block";a.play()};
+      rec.start();toast("Enregistrement… parle !")}catch(e){toast("Micro indisponible ou refusé")}};
+  $("#rs").onclick=()=>{if(rec&&rec.state==="recording")rec.stop()};
+
+  $("#sb").onclick=()=>{
+    const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+    if(!SR){toast("Reconnaissance vocale non supportée ici");return}
+    const target=$("#tg").value;store.set("tg",target);
+    const r=new SR();r.lang="en-US";r.interimResults=false;
+    r.onresult=e=>{
+      const said=e.results[0][0].transcript,clean=s=>s.toLowerCase().replace(/[^a-z' ]/g,"").split(/\s+/).filter(Boolean);
+      const T=clean(target),S=clean(said);let ok=0;T.forEach(w=>{if(S.includes(w))ok++});
+      const pct=Math.round(100*ok/Math.max(1,T.length));
+      $("#sr").innerHTML=`J'ai entendu : <b>${esc(said)}</b><br>Mots corrects : <b class="${pct>=80?"ok-t":"ko-t"}">${pct}%</b>`};
+    r.onerror=()=>toast("Erreur de reconnaissance (réseau ou micro ?)");
+    r.start();toast("Parle maintenant…");
+  };
+};
+
+/* ============ Mémo (pièges, phrasal verbs, nombres…) ============ */
+const MEMO={
+"Faux amis":[["actually","en fait (≠ actuellement)"],["currently","actuellement"],["library","bibliothèque (≠ librairie = bookshop)"],["to attend","assister à (≠ attendre = to wait)"],["to pretend","faire semblant (≠ prétendre)"],["sensible","raisonnable (≠ sensible = sensitive)"],["eventually","finalement (≠ éventuellement = possibly)"],["college","université / lycée (≠ collège)"],["to assist","aider (≠ assister)"],["to resume","reprendre (≠ résumer = to summarize)"],["journey","voyage (≠ journée = day)"],["lecture","cours magistral (≠ lecture = reading)"],["location","emplacement (≠ location = rental)"],["injury","blessure (≠ injure = insult)"],["novel","roman (≠ nouvelle = short story)"],["fabric","tissu (≠ fabrique = factory)"],["agenda","ordre du jour (≠ agenda = diary)"],["coin","pièce de monnaie (≠ coin = corner)"],["sympathetic","compatissant (≠ sympathique = nice)"],["comprehensive","complet (≠ compréhensif = understanding)"],["to deceive","tromper (≠ décevoir = to disappoint)"],["rest","repos / reste selon le contexte"]],
+"Phrasal verbs":[["look for","chercher"],["look after","s'occuper de"],["look up","chercher (dans un dictionnaire)"],["give up","abandonner"],["turn on","allumer"],["turn off","éteindre"],["get up","se lever"],["find out","découvrir"],["carry on","continuer"],["come back","revenir"],["take off","décoller / enlever"],["put on","mettre (un vêtement)"],["pick up","ramasser / aller chercher"],["set up","installer, créer"],["sign up","s'inscrire"],["log in","se connecter"],["log out","se déconnecter"],["fill in","remplir"],["run out of","manquer de"],["work out","s'entraîner / résoudre"],["figure out","comprendre, trouver"],["break down","tomber en panne"],["check in","s'enregistrer"],["wake up","se réveiller"],["throw away","jeter"],["call back","rappeler"],["get along with","s'entendre avec"],["look forward to","avoir hâte de"],["sit down","s'asseoir"],["hang out","traîner (entre amis)"],["show up","se pointer, arriver"]],
+"Nombres":[["one (1)","un"],["two (2)","deux"],["three (3)","trois"],["four (4)","quatre"],["five (5)","cinq"],["ten (10)","dix"],["eleven (11)","onze"],["twelve (12)","douze"],["thirteen (13)","treize"],["fifteen (15)","quinze"],["twenty (20)","vingt"],["twenty-one (21)","vingt et un"],["thirty (30)","trente"],["forty (40)","quarante (sans u : forty)"],["fifty (50)","cinquante"],["one hundred (100)","cent"],["one thousand (1,000)","mille"],["one million (1,000,000)","un million"],["first (1st)","premier"],["second (2nd)","deuxième"],["third (3rd)","troisième"],["fifth (5th)","cinquième"],["twelfth (12th)","douzième"],["twenty-first (21st)","vingt et unième"]],
+"Heure et dates":[["It's three o'clock.","Il est trois heures."],["It's a quarter past three.","Il est trois heures et quart."],["It's half past three.","Il est trois heures et demie."],["It's a quarter to four.","Il est quatre heures moins le quart."],["It's ten past five.","Il est cinq heures dix."],["at 9 a.m. / at 9 p.m.","à 9 h du matin / à 21 h"],["Monday, Tuesday, Wednesday, Thursday","lundi, mardi, mercredi, jeudi"],["Friday, Saturday, Sunday","vendredi, samedi, dimanche"],["January, February, March, April","janvier, février, mars, avril"],["May, June, July, August","mai, juin, juillet, août"],["September, October, November, December","septembre, octobre, novembre, décembre"],["October the twenty-fifth","le 25 octobre"],["in 2026 (twenty twenty-six)","en 2026"]],
+"Mots de liaison":[["and","et"],["but","mais"],["because","parce que"],["so","donc, alors"],["however","cependant"],["although","bien que"],["therefore","par conséquent"],["moreover","de plus"],["in addition","en plus"],["for example","par exemple"],["on the other hand","d'un autre côté"],["in conclusion","pour conclure"],["first, then, finally","d'abord, ensuite, enfin"],["despite","malgré"],["unless","à moins que"],["while","pendant que"],["whereas","alors que"]],
+"Question tags":[["She is nice, isn't she?","Elle est gentille, n'est-ce pas ?"],["You like tea, don't you?","Tu aimes le thé, non ?"],["He didn't come, did he?","Il n'est pas venu, si ?"],["They can swim, can't they?","Ils savent nager, non ?"],["Let's go, shall we?","Allons-y, d'accord ?"],["Are you ready? — Yes, I am.","Tu es prêt ? — Oui."],["Do you speak English? — No, I don't.","Tu parles anglais ? — Non."]]
+};
+
+/* ============ Progression et répétition espacée ============ */
+const dayNum=()=>{const d=new Date();return Math.floor((d.getTime()-d.getTimezoneOffset()*60000)/86400000)};
+function markStudied(){const d=store.get("days",[]),t=dayNum();if(!d.includes(t)){d.push(t);store.set("days",d.slice(-400))}}
+function streak(){const d=new Set(store.get("days",[]));let t=dayNum();if(!d.has(t))t--;let n=0;while(d.has(t)){n++;t--}return n}
+const wkey=w=>w[0]+"|"+w[1];
+const INTERVALS=[0,1,3,7,14];
+function srsState(){const box=store.get("box",{}),t=dayNum(),due=[],fresh=[];allWords().forEach(w=>{const c=box[wkey(w)];if(!c)fresh.push(w);else if(c.due<=t)due.push(w)});return{box,due,fresh}}
+function weak(w){const box=store.get("box",{});box[wkey(w)]={b:0,due:dayNum()};store.set("box",box)}
+const shuf=a=>{a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+const addErr=k=>{const g=store.get("gerr",[]);if(!g.includes(k)){g.push(k);store.set("gerr",g)}};
+const delErr=k=>{store.set("gerr",store.get("gerr",[]).filter(x=>x!==k))};
+
+VIEWS.home=()=>{
+  const s=srsState(),st=streak(),days=store.get("days",[]).length,mastered=Object.values(s.box).filter(c=>c.b>=3).length;
+  const all=allWords(),wod=all[dayNum()%all.length];
+  const rv=store.get("rev",{d:0,n:0}),today=rv.d===dayNum()?rv.n:0,gerr=store.get("gerr",[]).filter(k=>GQ[k]);
+  M.innerHTML=`<div class="card"><div class="big">🔥 ${st} jour${st>1?"s":""} de suite</div>
+  <p class="mut">${days} jour(s) d'étude au total · ${today} carte(s) révisée(s) aujourd'hui</p>
+  <div class="row"><div><div class="big">${s.due.length}</div><span class="mut">à réviser</span></div><div><div class="big">${mastered}</div><span class="mut">maîtrisés</span></div><div><div class="big">${all.length}</div><span class="mut">mots</span></div></div>
+  <button class="btn" id="go1" style="width:100%">🧠 Réviser maintenant</button></div>
+  <div class="card"><h2>Mot du jour</h2><div class="w">${sayBtn(wod[0])}<div class="t"><b>${esc(wod[0])}</b>${esc(wod[1])}</div></div></div>
+  <div class="card"><h2>Routine conseillée (15 min/jour)</h2>
+  <p class="mut">1) Révise tes cartes (5 min). 2) Lis une fiche dans « Temps » ou « Règles » (5 min). 3) Fais un quiz ou une dictée (5 min). 4) Répète à voix haute dans « Parler ». Un peu chaque jour vaut mieux que beaucoup une fois par semaine.</p>
+  ${gerr.length?`<button class="opt" id="ge">📝 Revoir mes ${gerr.length} erreur(s) de grammaire</button>`:""}</div>
+  <details><summary>💾 Sauvegarder / restaurer ma progression</summary>
+  <textarea id="bk" placeholder="Ta sauvegarde apparaîtra ici"></textarea>
+  <div class="row"><button class="btn alt" id="ex">Exporter</button><button class="btn alt" id="im">Importer</button></div>
+  <p class="mut">Avant de désinstaller l'appli, exporte et garde le texte (par exemple dans un message à toi-même). Colle-le ici pour tout retrouver.</p></details>`;
+  $("#go1").onclick=()=>show("revise");
+  if($("#ge"))$("#ge").onclick=()=>{show("quiz");runQuiz("gerr")};
+  $("#ex").onclick=()=>{
+    const o={};try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k.startsWith("eng_"))o[k]=localStorage.getItem(k)}}catch(e){}
+    const t=JSON.stringify(o);$("#bk").value=t;
+    try{navigator.clipboard.writeText(t);toast("Copié ✔")}catch(e){toast("Sélectionne et copie le texte")}};
+  $("#im").onclick=()=>{
+    try{const o=JSON.parse($("#bk").value);Object.keys(o).forEach(k=>{if(k.startsWith("eng_"))localStorage.setItem(k,o[k])});toast("Progression restaurée ✔");VIEWS.home()}catch(e){toast("Texte de sauvegarde invalide")}};
+};
+
+VIEWS.memo=()=>{
+  const cats=Object.keys(MEMO);let cur=store.get("mc",cats[0]);if(!MEMO[cur])cur=cats[0];
+  M.innerHTML=`<div class="chips">${cats.map(c=>`<button class="chip ${c===cur?"on":""}" data-c="${esc(c)}">${esc(c)}</button>`).join("")}</div>
+  <div class="card">${MEMO[cur].map(w=>`<div class="w">${sayBtn(w[0])}<div class="t"><b>${esc(w[0])}</b>${esc(w[1])}</div></div>`).join("")}</div>`;
+  M.querySelectorAll(".chip").forEach(b=>b.onclick=()=>{store.set("mc",b.dataset.c);VIEWS.memo()});
+};
+
+VIEWS.revise=()=>{
+  const s=srsState();let queue=shuf(s.due).slice(0,15);
+  if(queue.length<15)queue=queue.concat(shuf(s.fresh).slice(0,Math.min(5,15-queue.length)));
+  let i=0,ok=0;const again=new Set();
+  if(!queue.length){M.innerHTML=`<div class="card"><div class="big">Rien à réviser 🎉</div><p class="mut">Reviens demain : tes prochaines cartes arriveront au bon moment.</p></div>`;return}
+  const step=()=>{
+    if(i>=queue.length){
+      markStudied();
+      M.innerHTML=`<div class="card"><div class="big">Session terminée ✔</div><p>${ok} bonne(s) réponse(s) sur ${queue.length}.</p><div class="row"><button class="btn" id="more">Continuer</button><button class="btn alt" id="hm">Accueil</button></div></div>`;
+      $("#more").onclick=VIEWS.revise;$("#hm").onclick=()=>show("home");return;
+    }
+    const w=queue[i];
+    M.innerHTML=`<div class="card"><p class="mut">Carte ${i+1}/${queue.length}</p><div class="big">${esc(w[0])} ${sayBtn(w[0])}</div>
+    <div id="an" class="hide" style="margin:14px 0;font-size:20px">${esc(w[1])}</div>
+    <button class="btn alt" id="rv" style="width:100%">Voir la réponse</button>
+    <div class="row" id="jb" style="display:none"><button class="btn" id="yes" style="background:var(--ok)">✔ Je savais</button><button class="btn" id="no" style="background:var(--ko)">✘ À revoir</button></div></div>`;
+    speak(w[0]);
+    $("#rv").onclick=()=>{$("#an").classList.remove("hide");$("#rv").style.display="none";$("#jb").style.display="flex"};
+    const grade=good=>{
+      const box=store.get("box",{}),k=wkey(w),c=box[k]||{b:0,due:0};
+      if(good){c.b=Math.min(c.b+1,4);c.due=dayNum()+INTERVALS[c.b];ok++}
+      else{c.b=0;c.due=dayNum();if(!again.has(k)){again.add(k);queue.push(w)}}
+      box[k]=c;store.set("box",box);
+      let rv=store.get("rev",{d:0,n:0});if(rv.d!==dayNum())rv={d:dayNum(),n:0};rv.n++;store.set("rev",rv);
+      i++;step();
+    };
+    $("#yes").onclick=()=>grade(true);$("#no").onclick=()=>grade(false);
+  };
+  step();
+};
+
+/* ---- Quiz ---- */
+VIEWS.quiz=()=>{
+  const best=store.get("best",{}),ge=store.get("gerr",[]).filter(k=>GQ[k]);
+  const b=m=>best[m]!=null?`<span class="mut">(meilleur : ${best[m]}/10)</span>`:"";
+  M.innerHTML=`<div class="card"><h2>Choisis un quiz</h2>
+  <button class="opt" data-q="gram">📘 Choisir le bon temps / la bonne règle ${b("gram")}</button>
+  <button class="opt" data-q="conj">🔁 Conjugaison (écrire la forme) ${b("conj")}</button>
+  <button class="opt" data-q="en">🔤 Vocabulaire : anglais → français ${b("en")}</button>
+  <button class="opt" data-q="fr">🔤 Vocabulaire : français → anglais ${b("fr")}</button>
+  <button class="opt" data-q="dict">🎧 Dictée : écoute et écris ${b("dict")}</button>
+  ${ge.length?`<button class="opt" data-q="gerr">📝 Mes erreurs de grammaire (${ge.length})</button>`:""}</div>`;
+  M.querySelectorAll("[data-q]").forEach(b=>b.onclick=()=>runQuiz(b.dataset.q));
+};
+function runQuiz(mode){
+  let i=0,score=0,qs;
+  if(mode==="gram")qs=shuf(GQ.map((q,k)=>[...q,k])).slice(0,10);
+  else if(mode==="gerr")qs=shuf(store.get("gerr",[]).filter(k=>GQ[k]).map(k=>[...GQ[k],k])).slice(0,10);
+  else if(mode==="conj"){
+    const vs=[...Object.keys(IRR),...REG];
+    qs=Array.from({length:10},()=>({v:vs[Math.floor(Math.random()*vs.length)],s:SUBJ[Math.floor(Math.random()*SUBJ.length)],t:Math.floor(Math.random()*12)}));
+  }else if(mode==="dict"){
+    const ph=shuf(Object.values(PHRASES).flat().map(x=>x[0]).filter(x=>!x.includes("…"))).slice(0,5);
+    const wd=shuf(allWords().map(x=>x[0].replace(/^to /,""))).slice(0,5);
+    qs=shuf([...ph,...wd]);
+  }else{
+    qs=shuf(allWords()).slice(0,10).map(x=>{const pool=allWords().filter(y=>y[0]!==x[0]&&y[1]!==x[1]);return{w:x,opts:shuf([x,...shuf(pool).slice(0,3)])}});
+  }
+  const N=qs.length;
+  if(!N){toast("Rien à faire ici pour l'instant");VIEWS.quiz();return}
+  const finish=()=>{
+    markStudied();
+    if(mode!=="gerr"){const best=store.get("best",{});if(best[mode]==null||score>best[mode])best[mode]=score;store.set("best",best)}
+    M.innerHTML=`<div class="card"><div class="big">${score} / ${N}</div><p>${score>=8*N/10?"Excellent ! 🎉":score>=N/2?"Bien, continue ! 💪":"Révise puis réessaie 📘"}</p><div class="row"><button class="btn" id="again">Rejouer</button><button class="btn alt" id="menu">Menu</button></div></div>`;
+    $("#again").onclick=()=>runQuiz(mode);$("#menu").onclick=VIEWS.quiz;
+  };
+  const next=()=>{
+    if(i>=N)return finish();
+    const q=qs[i];
+    if(mode==="gram"||mode==="gerr"){
+      M.innerHTML=`<div class="card"><p class="mut">Question ${i+1}/${N} · Score ${score}</p><div class="big">${esc(q[0])}</div>${q[1].map((o,k)=>`<button class="opt" data-k="${k}">${esc(o)}</button>`).join("")}<div id="fb"></div></div>`;
+      M.querySelectorAll(".opt").forEach(b=>b.onclick=()=>{
+        const k=+b.dataset.k;M.querySelectorAll(".opt").forEach(x=>x.disabled=true);
+        M.querySelectorAll(".opt")[q[2]].classList.add("ok");
+        if(k===q[2]){score++;delErr(q[4])}else{b.classList.add("ko");addErr(q[4])}
+        $("#fb").innerHTML=`<p class="mut">${esc(q[3])}</p><button class="btn" id="nx">Suivant</button>`;
+        $("#nx").onclick=()=>{i++;next()};
+      });
+    }else if(mode==="conj"){
+      const exp=build(q.v,q.s,"aff")[q.t],te=TENSES[q.t];
+      M.innerHTML=`<div class="card"><p class="mut">Question ${i+1}/${N} · Score ${score}</p><div class="big">${esc(q.v)} · ${esc(q.s)}</div><p>${esc(te.n)} <span class="mut">(${esc(te.fr)})</span></p><input id="ans" autocapitalize="none" placeholder="Écris la phrase complète, ex : ${esc(q.s)} …"><div class="row"><button class="btn" id="ck">Vérifier</button></div><div id="fb"></div></div>`;
+      $("#ck").onclick=()=>{
+        const n=s=>s.toLowerCase().trim().replace(/\s+/g," ");
+        const a=n($("#ans").value),e=n(exp),bare=e.split(" ").slice(1).join(" ");
+        const ok=a===e||a===bare;if(ok)score++;
+        $("#ck").disabled=true;
+        $("#fb").innerHTML=`<p class="${ok?"ok-t":"ko-t"}">${ok?"Correct ✔":"Faux ✘"} — réponse : <b>${esc(exp)}</b></p><button class="btn" id="nx">Suivant</button>`;
+        $("#nx").onclick=()=>{i++;next()};
+      };
+    }else if(mode==="dict"){
+      M.innerHTML=`<div class="card"><p class="mut">Dictée ${i+1}/${N} · Score ${score}</p><div class="big">🎧 Écoute et écris</div><button class="btn alt" id="pl" style="width:100%;margin:8px 0">🔊 Réécouter</button><input id="ans" autocapitalize="none" placeholder="Ce que tu entends…"><div class="row"><button class="btn" id="ck">Vérifier</button></div><div id="fb"></div></div>`;
+      setTimeout(()=>speak(q),300);
+      $("#pl").onclick=()=>speak(q);
+      $("#ck").onclick=()=>{
+        const n=s=>s.toLowerCase().replace(/[^a-z0-9' ]/g,"").replace(/\s+/g," ").trim();
+        const ok=n($("#ans").value)===n(q);if(ok)score++;
+        $("#ck").disabled=true;
+        $("#fb").innerHTML=`<p class="${ok?"ok-t":"ko-t"}">${ok?"Correct ✔":"Presque ✘"} — réponse : <b>${esc(q)}</b></p><button class="btn" id="nx">Suivant</button>`;
+        $("#nx").onclick=()=>{i++;next()};
+      };
+    }else{
+      const en=mode==="en";
+      M.innerHTML=`<div class="card"><p class="mut">Question ${i+1}/${N} · Score ${score}</p><div class="big">${esc(en?q.w[0]:q.w[1])} ${en?sayBtn(q.w[0]):""}</div>${q.opts.map((o,k)=>`<button class="opt" data-k="${k}">${esc(en?o[1]:o[0])}</button>`).join("")}<div id="fb"></div></div>`;
+      M.querySelectorAll(".opt").forEach(b=>b.onclick=()=>{
+        const k=+b.dataset.k,good=q.opts.indexOf(q.w);
+        M.querySelectorAll(".opt").forEach(x=>x.disabled=true);
+        M.querySelectorAll(".opt")[good].classList.add("ok");
+        if(k===good)score++;else{b.classList.add("ko");weak(q.w)}
+        $("#fb").innerHTML=`<button class="btn" id="nx" style="margin-top:8px">Suivant</button>`;
+        $("#nx").onclick=()=>{i++;next()};
+      });
+    }
+  };
+  next();
+}
+
+{const f=store.get("tab","home");show(VIEWS[f]?f:"home")}
+</script>
+</body>
+</html>
